@@ -10,5 +10,6 @@ set(PROJECT_VER "1.7.6")
 add_compile_options(-Wno-missing-field-initializers)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+set(EXTRA_COMPONENT_DIRS main/components)
 project(xiaozhi)
 
