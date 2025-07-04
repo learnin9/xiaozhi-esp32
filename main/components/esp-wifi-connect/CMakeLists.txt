@@ -1,0 +1,24 @@
+idf_component_register(
+    SRCS
+        "dns_server.cc"
+        "ssid_manager.cc"
+        "wifi_configuration_ap.cc"
+        "wifi_station.cc"
+    INCLUDE_DIRS
+        "include"
+    PRIV_INCLUDE_DIRS
+        "include"
+    EMBED_FILES
+        "assets/ap.png"
+        "assets/ap_v2.png"
+        "assets/ap_v3.png"
+        "assets/ap_v3_advanced.png"
+        "assets/wifi_configuration.html"
+        "assets/wifi_configuration_done.html"
+    REQUIRES
+    	"esp_timer"
+        "esp_http_server"
+        "esp_wifi"
+        "nvs_flash"
+        "json"
+)
