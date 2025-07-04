@@ -15,6 +15,7 @@
 #include <cJSON.h>
 #include <esp_smartconfig.h>
 #include "ssid_manager.h"
+#include <esp_http_server.h>
 
 #define TAG "WifiConfigurationAp"
 
@@ -23,6 +24,10 @@
 
 extern const char index_html_start[] asm("_binary_wifi_configuration_html_start");
 extern const char done_html_start[] asm("_binary_wifi_configuration_done_html_start");
+
+// Forward declarations for VoIP handlers
+static esp_err_t voip_config_get_handler(httpd_req_t *req);
+static esp_err_t voip_config_post_handler(httpd_req_t *req);
 
 WifiConfigurationAp& WifiConfigurationAp::GetInstance() {
     static WifiConfigurationAp instance;
@@ -621,6 +626,23 @@ void WifiConfigurationAp::StartWebServer()
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server_, &advanced_submit));
 
+    // Add VoIP handlers
+    httpd_uri_t voip_config_uri = {
+        .uri      = "/voip/config",
+        .method   = HTTP_GET,
+        .handler  = voip_config_get_handler,
+        .user_ctx = NULL
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server_, &voip_config_uri));
+
+    httpd_uri_t voip_submit_uri = {
+        .uri      = "/voip/submit",
+        .method   = HTTP_POST,
+        .handler  = voip_config_post_handler,
+        .user_ctx = NULL
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server_, &voip_submit_uri));
+
     ESP_LOGI(TAG, "Web server started");
 }
 
@@ -812,4 +834,105 @@ void WifiConfigurationAp::Stop() {
     }
 
     ESP_LOGI(TAG, "Wifi configuration AP stopped");
+}
+
+static esp_err_t voip_config_get_handler(httpd_req_t *req) {
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("voip", NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    
+    char buffer[128];
+    size_t length = sizeof(buffer);
+    if (nvs_get_str(nvs_handle, "user", buffer, &length) == ESP_OK) {
+        cJSON_AddStringToObject(root, "user", buffer);
+    }
+    length = sizeof(buffer);
+    if (nvs_get_str(nvs_handle, "password", buffer, &length) == ESP_OK) {
+        cJSON_AddStringToObject(root, "password", buffer);
+    }
+    length = sizeof(buffer);
+    if (nvs_get_str(nvs_handle, "server", buffer, &length) == ESP_OK) {
+        cJSON_AddStringToObject(root, "server", buffer);
+    }
+    uint16_t port;
+    if (nvs_get_u16(nvs_handle, "port", &port) == ESP_OK) {
+        cJSON_AddNumberToObject(root, "port", port);
+    }
+    length = sizeof(buffer);
+    if (nvs_get_str(nvs_handle, "transport", buffer, &length) == ESP_OK) {
+        cJSON_AddStringToObject(root, "transport", buffer);
+    }
+    
+    const char *json_string = cJSON_Print(root);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_string, strlen(json_string));
+    
+    cJSON_Delete(root);
+    free((void*)json_string);
+    nvs_close(nvs_handle);
+    
+    return ESP_OK;
+}
+
+static esp_err_t voip_config_post_handler(httpd_req_t *req) {
+    char buf[256];
+    int ret, remaining = req->content_len;
+
+    if (remaining >= sizeof(buf)) {
+        ESP_LOGE(TAG, "VoIP config POST content too long");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Content too long");
+        return ESP_FAIL;
+    }
+
+    ret = httpd_req_recv(req, buf, remaining);
+    if (ret <= 0) {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request Timeout");
+        }
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (root == NULL) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("voip", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        cJSON_Delete(root);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    cJSON *user = cJSON_GetObjectItem(root, "user");
+    if (user) nvs_set_str(nvs_handle, "user", user->valuestring);
+
+    cJSON *password = cJSON_GetObjectItem(root, "password");
+    if (password) nvs_set_str(nvs_handle, "password", password->valuestring);
+
+    cJSON *server = cJSON_GetObjectItem(root, "server");
+    if (server) nvs_set_str(nvs_handle, "server", server->valuestring);
+    
+    cJSON *port = cJSON_GetObjectItem(root, "port");
+    if (port) nvs_set_u16(nvs_handle, "port", (uint16_t)port->valueint);
+
+    cJSON *transport = cJSON_GetObjectItem(root, "transport");
+    if (transport) nvs_set_str(nvs_handle, "transport", transport->valuestring);
+
+    nvs_commit(nvs_handle);
+    nvs_close(nvs_handle);
+    cJSON_Delete(root);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"success\":true}", -1);
+
+    return ESP_OK;
 }

@@ -136,6 +136,7 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab('wifi')" data-lang="wifi_tab">WiFi 配置</div>
         <div class="tab" onclick="switchTab('advanced')" data-lang="advanced_tab">高级选项</div>
+        <div class="tab" onclick="switchTab('voip')" data-lang="voip_tab">VoIP 设置</div>
     </div>
 
     <div id="wifi-tab" class="tab-content active">
@@ -214,6 +215,42 @@
         </form>
     </div>
 
+    <div id="voip-tab" class="tab-content">
+        <form action="/voip/submit" method="post" onsubmit="submitVoipForm(event)">
+            <div>
+                <h3 data-lang="voip_tab">VoIP 设置</h3>
+                <p class="error" style="color: red; text-align: center;" id="voip_error"></p>
+                
+                <p>
+                    <label for="voip_user" data-lang="voip_user">注册账号:</label>
+                    <input type="text" id="voip_user" name="voip_user">
+                </p>
+                <p>
+                    <label for="voip_password" data-lang="voip_password">注册密码:</label>
+                    <input type="password" id="voip_password" name="voip_password">
+                </p>
+                <p>
+                    <label for="voip_server" data-lang="voip_server">服务器地址:</label>
+                    <input type="text" id="voip_server" name="voip_server">
+                </p>
+                <p>
+                    <label for="voip_port" data-lang="voip_port">端口:</label>
+                    <input type="number" id="voip_port" name="voip_port" min="1" max="65535">
+                </p>
+                <p>
+                    <label for="voip_transport" data-lang="voip_transport">传输协议:</label>
+                    <select id="voip_transport" name="voip_transport">
+                        <option value="udp">UDP</option>
+                        <option value="tcp">TCP</option>
+                    </select>
+                </p>
+                <p style="text-align: center;">
+                    <input type="submit" value="保存" id="voip_button" data-lang-value="save">
+                </p>
+            </div>
+        </form>
+    </div>
+
     <script type="text/javascript">
         const button = document.getElementById('button');
         const error = document.getElementById('error');
@@ -233,7 +270,13 @@
                 ota_url: '自定义 OTA 地址:',
                 max_tx_power: 'Wi-Fi 最大发射功率:',
                 remember_bssid: '连接 Wi-Fi 时记住 BSSID',
-                save: '保存'
+                save: '保存',
+                voip_tab: 'VoIP 设置',
+                voip_user: '注册账号:',
+                voip_password: '注册密码:',
+                voip_server: '服务器地址:',
+                voip_port: '端口:',
+                voip_transport: '传输协议:'
             },
             'zh-TW': {
                 title: '網路設定',
@@ -247,7 +290,13 @@
                 ota_url: '自定義 OTA 位址:',
                 max_tx_power: 'Wi-Fi 最大發射功率:',
                 remember_bssid: '連接 Wi-Fi 時記住 BSSID',
-                save: '儲存'
+                save: '儲存',
+                voip_tab: 'VoIP 設定',
+                voip_user: '註冊帳號:',
+                voip_password: '註冊密碼:',
+                voip_server: '伺服器位址:',
+                voip_port: '連接埠:',
+                voip_transport: '傳輸協定:'
             },
             'en-US': {
                 title: 'Network Configuration',
@@ -261,7 +310,13 @@
                 ota_url: 'Custom OTA URL:',
                 max_tx_power: 'Wi-Fi Max TX Power:',
                 remember_bssid: 'Remember BSSID when connecting to Wi-Fi',
-                save: 'Save'
+                save: 'Save',
+                voip_tab: 'VoIP Settings',
+                voip_user: 'Username:',
+                voip_password: 'Password:',
+                voip_server: 'Server Address:',
+                voip_port: 'Port:',
+                voip_transport: 'Transport:'
             },
             'ja-JP': {
                 title: 'ネットワーク設定',
@@ -275,7 +330,13 @@
                 ota_url: '自定義 OTA 位址:',
                 max_tx_power: 'Wi-Fi最大送信電力:',
                 remember_bssid: 'Wi-Fi接続時にBSSIDを記憶する',
-                save: '保存'
+                save: '保存',
+                voip_tab: 'VoIP 設定',
+                voip_user: '登録アカウント:',
+                voip_password: '登録パスワード:',
+                voip_server: 'サーバーアドレス:',
+                voip_port: 'ポート:',
+                voip_transport: 'トランスポートプロトコル:'
             }
         };
 
@@ -445,6 +506,7 @@
             loadSavedList();
             loadAPList();
             loadAdvancedConfig();
+            loadVoipConfig();
         });
 
         // 监听 pageshow 事件以处理浏览器返回键
@@ -569,6 +631,69 @@
                 }
             } catch (error) {
                 console.error('Error loading advanced config:', error);
+            }
+        }
+
+        // 加载VoIP配置
+        async function loadVoipConfig() {
+            try {
+                const response = await fetch('/voip/config');
+                const data = await response.json();
+                
+                if (data.user) {
+                    document.getElementById('voip_user').value = data.user;
+                }
+                if (data.password) {
+                    document.getElementById('voip_password').value = data.password;
+                }
+                if (data.server) {
+                    document.getElementById('voip_server').value = data.server;
+                }
+                if (data.port) {
+                    document.getElementById('voip_port').value = data.port;
+                }
+                if (data.transport) {
+                    document.getElementById('voip_transport').value = data.transport;
+                }
+            } catch (error) {
+                console.error('Error loading voip config:', error);
+            }
+        }
+
+        async function submitVoipForm(event) {
+            event.preventDefault();
+            const voipButton = document.getElementById('voip_button');
+            const voipError = document.getElementById('voip_error');
+            voipButton.disabled = true;
+            voipError.textContent = '';
+
+            const config = {
+                user: document.getElementById('voip_user').value,
+                password: document.getElementById('voip_password').value,
+                server: document.getElementById('voip_server').value,
+                port: parseInt(document.getElementById('voip_port').value),
+                transport: document.getElementById('voip_transport').value
+            };
+
+            try {
+                const response = await fetch('/voip/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || '保存失败');
+                }
+
+                voipButton.disabled = false;
+                showToast('VoIP 配置已保存');
+            } catch (err) {
+                voipError.textContent = err.message;
+                voipButton.disabled = false;
             }
         }
 
