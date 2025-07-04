@@ -150,7 +150,8 @@
                 </ul>
             </div>
             <div>
-                <h3 data-lang="new_wifi">新的 WiFi</h3>
+                <h3 data-lang="new_wifi" style="display: inline-block; margin-right: 10px;">新的 WiFi</h3>
+                <button type="button" id="scan_button" onclick="loadAPList()" data-lang-value="scan">扫描</button>
                 <p class="error" style="color: red; text-align: center;" id="error">
                 </p>
                 <p>
@@ -425,9 +426,13 @@
 
         // Load AP list from /scan
         function loadAPList() {
-            if (button.disabled) {
+            const scanButton = document.getElementById('scan_button');
+            if (scanButton.disabled) {
                 return;
             }
+            scanButton.disabled = true;
+            const originalText = scanButton.textContent;
+            scanButton.textContent = '扫描中...';
 
             fetch('/scan')
                 .then(response => response.json())
@@ -450,10 +455,13 @@
                         });
                         apList.appendChild(link);
                     });
-                    setTimeout(loadAPList, 5000);
+                    scanButton.disabled = false;
+                    scanButton.textContent = originalText;
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    scanButton.disabled = false;
+                    scanButton.textContent = originalText;
                 });
         }
 
@@ -504,7 +512,6 @@
             document.getElementById('language').value = savedLang;
             changeLanguage();
             loadSavedList();
-            loadAPList();
             loadAdvancedConfig();
             loadVoipConfig();
         });

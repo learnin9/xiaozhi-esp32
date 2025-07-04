@@ -84,23 +84,6 @@ void WifiConfigurationAp::Start()
 
     StartAccessPoint();
     StartWebServer();
-    
-    // Start scan immediately
-    esp_wifi_scan_start(nullptr, false);
-    // Setup periodic WiFi scan timer
-    esp_timer_create_args_t timer_args = {
-        .callback = [](void* arg) {
-            auto* self = static_cast<WifiConfigurationAp*>(arg);
-            if (!self->is_connecting_) {
-                esp_wifi_scan_start(nullptr, false);
-            }
-        },
-        .arg = this,
-        .dispatch_method = ESP_TIMER_TASK,
-        .name = "wifi_scan_timer",
-        .skip_unhandled_events = true
-    };
-    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &scan_timer_));
 }
 
 std::string WifiConfigurationAp::GetSsid()
@@ -297,6 +280,14 @@ void WifiConfigurationAp::StartWebServer()
         .method = HTTP_GET,
         .handler = [](httpd_req_t *req) -> esp_err_t {
             auto *this_ = static_cast<WifiConfigurationAp *>(req->user_ctx);
+            
+            // Trigger a new WiFi scan
+            if (esp_wifi_scan_start(nullptr, true) != ESP_OK) {
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to start scan");
+                return ESP_FAIL;
+            }
+
+            // Wait for scan to complete by checking event handler results
             std::lock_guard<std::mutex> lock(this_->mutex_);
 
             // Send the scan results as JSON
@@ -540,9 +531,8 @@ void WifiConfigurationAp::StartWebServer()
 
             int ret = httpd_req_recv(req, buf, buf_len);
             if (ret <= 0) {
-                free(buf);
                 if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                    httpd_resp_send_408(req);
+                    httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request Timeout");
                 } else {
                     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to receive request");
                 }
@@ -718,9 +708,6 @@ void WifiConfigurationAp::WifiEventHandler(void* arg, esp_event_base_t event_bas
 
         self->ap_records_.resize(ap_num);
         esp_wifi_scan_get_ap_records(&ap_num, self->ap_records_.data());
-
-        // 扫描完成，等待10秒后再次扫描
-        esp_timer_start_once(self->scan_timer_, 10 * 1000000);
     }
 }
 
@@ -893,6 +880,8 @@ static esp_err_t voip_config_post_handler(httpd_req_t *req) {
     if (ret <= 0) {
         if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
             httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Request Timeout");
+        } else {
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to receive request");
         }
         return ESP_FAIL;
     }
@@ -927,7 +916,22 @@ static esp_err_t voip_config_post_handler(httpd_req_t *req) {
     cJSON *transport = cJSON_GetObjectItem(root, "transport");
     if (transport) nvs_set_str(nvs_handle, "transport", transport->valuestring);
 
-    nvs_commit(nvs_handle);
+    esp_err_t commit_err = nvs_commit(nvs_handle);
+    if (commit_err != ESP_OK) {
+        nvs_close(nvs_handle);
+        cJSON_Delete(root);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to commit NVS");
+        return ESP_FAIL;
+    }
+    
+    // Log the saved VoIP configuration
+    ESP_LOGI(TAG, "VoIP configuration saved:");
+    if (user) ESP_LOGI(TAG, "  User: %s", user->valuestring);
+    if (password) ESP_LOGI(TAG, "  Password: %s", "********"); // For security, don't log password
+    if (server) ESP_LOGI(TAG, "  Server: %s", server->valuestring);
+    if (port) ESP_LOGI(TAG, "  Port: %d", port->valueint);
+    if (transport) ESP_LOGI(TAG, "  Transport: %s", transport->valuestring);
+
     nvs_close(nvs_handle);
     cJSON_Delete(root);
 
