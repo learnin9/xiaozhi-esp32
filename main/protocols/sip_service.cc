@@ -38,7 +38,7 @@ static char *_get_network_ip()
     return media_lib_ipv4_ntoa(&ip_info.ip);
 }
 
-static int _esp_sip_event_handler(esp_rtc_event_t event, void *ctx)
+int _esp_sip_event_handler(esp_rtc_event_t event, void *ctx)
 {
     av_stream_handle_t av_stream = (av_stream_handle_t) ctx;
     ESP_LOGD(TAG, "_esp_sip_event_handler event %d", event);
@@ -115,9 +115,9 @@ esp_rtc_handle_t sip_service_start(av_stream_handle_t av_stream, const char *uri
         .receive_audio = _receive_audio,
     };
     esp_rtc_config_t sip_service_config = {
-        .uri = uri,
         .ctx = av_stream,
         .local_addr = _get_network_ip(),
+        .uri = uri,
         .acodec_type = RTC_ACODEC_G711A,
         .data_cb = &data_cb,
         .event_handler = _esp_sip_event_handler,

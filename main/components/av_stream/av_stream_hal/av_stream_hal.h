@@ -27,7 +27,7 @@
 #include "esp_log.h"
 #include "driver/i2s.h"
 #include "i2s_stream.h"
-#include "board.h"
+#include "movecall_moji_esp32s3/board.h"
 #include "esp_lcd_panel_ops.h"
 
 #ifdef __cplusplus

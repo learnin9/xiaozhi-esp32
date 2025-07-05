@@ -40,7 +40,7 @@ esp_lcd_panel_handle_t av_stream_lcd_init(esp_periph_set_handle_t set)
 {
     AUDIO_NULL_CHECK(TAG, set, return NULL);
 
-#if !CONFIG_IDF_TARGET_ESP32
+#if 0
     return audio_board_lcd_init(set, NULL);
 #else
     return NULL;

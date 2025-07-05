@@ -161,4 +161,13 @@ set(COMPONENT_SRCS
 )
 endif()
 
+if (CONFIG_BOARD_TYPE_MOVECALL_MOJI_ESP32S3)
+message(STATUS "Current board name is CONFIG_BOARD_TYPE_MOVECALL_MOJI_ESP32S3")
+list(APPEND COMPONENT_ADD_INCLUDEDIRS ./movecall_moji_esp32s3)
+set(COMPONENT_SRCS
+./movecall_moji_esp32s3/board.c
+./movecall_moji_esp32s3/board_pins_config.c
+)
+endif()
+
 register_component()

@@ -36,6 +36,7 @@ list(APPEND SOURCES ${IOT_SOURCES})
 file(GLOB BOARD_COMMON_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/boards/common/*.cc)
 list(APPEND SOURCES ${BOARD_COMMON_SOURCES})
 list(APPEND INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/common)
+list(APPEND SOURCES boards/movecall-moji-esp32s3/movecall_moji_esp32s3.cc)
 
 # 根据 BOARD_TYPE 配置添加对应的板级文件
 if(CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI)
@@ -199,11 +200,6 @@ elseif(CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI_CAM)
 elseif(CONFIG_BOARD_TYPE_JIUCHUAN )
     set(BOARD_TYPE "jiuchuan-s3")
 endif()
-file(GLOB BOARD_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.c
-)
-list(APPEND SOURCES ${BOARD_SOURCES})
 
 if(CONFIG_USE_AUDIO_PROCESSOR)
     list(APPEND SOURCES "audio_processing/afe_audio_processor.cc")
@@ -246,7 +242,7 @@ endif()
 idf_component_register(SRCS "${SOURCES}"
                     EMBED_FILES "${LANG_SOUNDS}" "${COMMON_SOUNDS}"
                     INCLUDE_DIRS "${INCLUDE_DIRS}"
-                    PRIV_REQUIRES esp-wifi-connect efuse esp_app_format spi_flash app_update "78__esp-opus-encoder" esp_peripherals audio_flash_tone audio_stream av_stream
+                    PRIV_REQUIRES esp-wifi-connect efuse esp_app_format spi_flash app_update "78__esp-opus-encoder" esp_peripherals audio_flash_tone audio_stream audio_board av_stream
                     WHOLE_ARCHIVE
                     )
 

@@ -1159,9 +1159,10 @@ void Application::SetAecMode(AecMode mode) {
 
 void Application::StartVoipService(const char* uri) {
     av_stream_config_t av_stream_config = {
+        .ctx = this,
         .enable_aec = true,
-        .acodec_samplerate = 16000,
         .acodec_type = AV_ACODEC_G711A,
+        .acodec_samplerate = 16000,
         .vcodec_type = AV_VCODEC_NULL,
         .hal = {
             .audio_samplerate = 16000,
@@ -1173,7 +1174,7 @@ void Application::StartVoipService(const char* uri) {
         ESP_LOGE(TAG, "Failed to initialize av stream");
         return;
     }
-    sip_handle_ = sip_service_start(av_stream_, uri, this);
+    sip_handle_ = sip_service_start(av_stream_, uri);
 }
 
 void Application::VoipCall(const std::string& target_uri) {

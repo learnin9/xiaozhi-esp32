@@ -63,6 +63,11 @@ ENDIF ()
 
 set(COMPONENT_REQUIRES driver audio_hal audio_sal fatfs console audio_pipeline audio_board spiffs display_service esp_dispatcher bt mbedtls wpa_supplicant nvs_flash)
 
+# Add include path for the custom board
+if(CONFIG_BOARD_TYPE_MOVECALL_MOJI_ESP32S3)
+    list(APPEND COMPONENT_ADD_INCLUDEDIRS ${CMAKE_CURRENT_SOURCE_DIR}/../audio_board/movecall_moji_esp32s3)
+endif()
+
 IF (((IDF_VERSION_MAJOR EQUAL 4) AND (IDF_VERSION_MINOR GREATER 3)) OR (IDF_VERSION_MAJOR GREATER 4))
 list(APPEND COMPONENT_REQUIRES esp_lcd)
 ENDIF()
