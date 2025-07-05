@@ -166,4 +166,12 @@ private:
     void SetState(State state);
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+av_stream_handle_t get_av_stream(void);
+#ifdef __cplusplus
+}
+#endif
+
 #endif // _APPLICATION_H_

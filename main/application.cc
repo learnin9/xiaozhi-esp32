@@ -11,6 +11,7 @@
 #include "assets/lang_config.h"
 #include "mcp_server.h"
 #include "audio_debugger.h"
+#include "protocols/voip_service.h"
 
 #if CONFIG_USE_AUDIO_PROCESSOR
 #include "afe_audio_processor.h"
@@ -31,6 +32,8 @@
 #include <cJSON.h>
 #include <driver/gpio.h>
 #include <arpa/inet.h>
+#include "esp_event.h"
+#include "esp_wifi.h"
 
 #define TAG "Application"
 
@@ -403,6 +406,17 @@ void Application::StopListening() {
     });
 }
 
+static void on_wifi_event(void* arg, esp_event_base_t event_base,
+    int32_t event_id, void* event_data)
+{
+    if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        voip_service_start();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        voip_service_stop();
+    }
+}
+
+
 void Application::Start() {
     auto& board = Board::GetInstance();
     SetDeviceState(kDeviceStateStarting);
@@ -453,6 +467,10 @@ void Application::Start() {
 
     /* Wait for the network to be ready */
     board.StartNetwork();
+
+    // Register WiFi event handlers
+    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &on_wifi_event, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_wifi_event, NULL);
 
     // Update the status bar immediately to show the network state
     display->UpdateStatusBar(true);
