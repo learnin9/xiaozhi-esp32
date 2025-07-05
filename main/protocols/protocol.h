@@ -6,6 +6,7 @@
 #include <functional>
 #include <chrono>
 #include <vector>
+#include "protocols/protocol_types.h"
 
 struct AudioStreamPacket {
     int sample_rate = 0;
@@ -29,11 +30,6 @@ struct BinaryProtocol3 {
     uint16_t payload_size;
     uint8_t payload[];
 } __attribute__((packed));
-
-enum AbortReason {
-    kAbortReasonNone,
-    kAbortReasonWakeWordDetected
-};
 
 enum ListeningMode {
     kListeningModeAutoStop,

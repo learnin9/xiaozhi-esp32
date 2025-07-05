@@ -12,6 +12,7 @@
 #include <vector>
 #include <condition_variable>
 #include <memory>
+#include <atomic>
 
 #include <opus_encoder.h>
 #include <opus_decoder.h>
@@ -23,6 +24,14 @@
 #include "audio_processor.h"
 #include "wake_word.h"
 #include "audio_debugger.h"
+#include "assets/lang_config.h"
+#include "mcp_server.h"
+#include "protocols/sip_service.h"
+#include "av_stream.h"
+#include "settings.h"
+#include "system_info.h"
+#include "protocols/protocol_types.h"
+#include "audio_processing/audio_processor.h"
 
 #define SCHEDULE_EVENT (1 << 0)
 #define SEND_AUDIO_EVENT (1 << 1)
@@ -45,8 +54,11 @@ enum DeviceState {
     kDeviceStateUpgrading,
     kDeviceStateActivating,
     kDeviceStateAudioTesting,
+    kDeviceStateInVoipCall,
     kDeviceStateFatalError
 };
+
+
 
 #define OPUS_FRAME_DURATION_MS 60
 #define MAX_AUDIO_PACKETS_IN_QUEUE (2400 / OPUS_FRAME_DURATION_MS)
@@ -82,6 +94,12 @@ public:
     void SetAecMode(AecMode mode);
     AecMode GetAecMode() const { return aec_mode_; }
     BackgroundTask* GetBackgroundTask() const { return background_task_; }
+    av_stream_handle_t GetAvStream() const { return av_stream_; }
+    void StartVoipService(const char* uri);
+    void VoipCall(const std::string& target_uri);
+    void VoipAnswer();
+    void VoipHangup();
+    void StopSpeaking();
 
 private:
     Application();
@@ -139,6 +157,13 @@ private:
     void AudioLoop();
     void EnterAudioTestingMode();
     void ExitAudioTestingMode();
+    esp_rtc_handle_t sip_handle_ = nullptr;
+    av_stream_handle_t av_stream_ = nullptr;
+
+    enum class State {
+        // ... existing code ...
+    };
+    void SetState(State state);
 };
 
 #endif // _APPLICATION_H_

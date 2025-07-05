@@ -14,6 +14,7 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "protocols/protocol.cc"
             "protocols/mqtt_protocol.cc"
             "protocols/websocket_protocol.cc"
+            "protocols/sip_service.cc"
             "iot/thing.cc"
             "iot/thing_manager.cc"
             "mcp_server.cc"
@@ -242,10 +243,10 @@ if(CONFIG_IDF_TARGET_ESP32)
                              )
 endif()
 
-idf_component_register(SRCS ${SOURCES}
-                    EMBED_FILES ${LANG_SOUNDS} ${COMMON_SOUNDS}
-                    INCLUDE_DIRS ${INCLUDE_DIRS}
-                    PRIV_REQUIRES esp-wifi-connect efuse esp_app_format spi_flash app_update "78__esp-opus-encoder"
+idf_component_register(SRCS "${SOURCES}"
+                    EMBED_FILES "${LANG_SOUNDS}" "${COMMON_SOUNDS}"
+                    INCLUDE_DIRS "${INCLUDE_DIRS}"
+                    PRIV_REQUIRES esp-wifi-connect efuse esp_app_format spi_flash app_update "78__esp-opus-encoder" esp_peripherals audio_flash_tone audio_stream av_stream
                     WHOLE_ARCHIVE
                     )
 
@@ -317,3 +318,6 @@ spiffs_create_partition_assets(
     MMAP_FILE_SUPPORT_FORMAT ".aaf"
 )
 endif()
+
+# a library for ws2812
+add_library(ws2812_driver STATIC IMPORTED)

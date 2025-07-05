@@ -47,7 +47,8 @@ static const char* const STATE_STRINGS[] = {
     "activating",
     "audio_testing",
     "fatal_error",
-    "invalid_state"
+    "invalid_state",
+    "in_voip_call"
 };
 
 Application::Application() {
@@ -317,6 +318,9 @@ void Application::ToggleChatState() {
 
     if (!protocol_) {
         ESP_LOGE(TAG, "Protocol not initialized");
+        // For test only, make a voip call if protocol is not initialized
+        ESP_LOGI(TAG, "Making a VoIP call for testing");
+        VoipCall("sip:1002@192.168.1.100");
         return;
     }
 
@@ -711,6 +715,8 @@ void Application::Start() {
         // Play the success sound to indicate the device is ready
         ResetDecoder();
         PlaySound(Lang::Sounds::P3_SUCCESS);
+        // TODO: Get SIP URI from config
+        StartVoipService("sip:1001@192.168.1.100");
     }
 
     // Print heap stats
@@ -1030,6 +1036,12 @@ void Application::SetDeviceState(DeviceState state) {
             }
             ResetDecoder();
             break;
+        case kDeviceStateInVoipCall:
+            display->SetStatus("In Call");
+            display->SetEmotion("neutral");
+            audio_processor_->Stop();
+            wake_word_->StopDetection();
+            break;
         default:
             // Do nothing
             break;
@@ -1143,4 +1155,41 @@ void Application::SetAecMode(AecMode mode) {
             protocol_->CloseAudioChannel();
         }
     });
+}
+
+void Application::StartVoipService(const char* uri) {
+    av_stream_config_t av_stream_config = {
+        .enable_aec = true,
+        .acodec_samplerate = 16000,
+        .acodec_type = AV_ACODEC_G711A,
+        .vcodec_type = AV_VCODEC_NULL,
+        .hal = {
+            .audio_samplerate = 16000,
+            .audio_framesize = (16000 / 1000) * OPUS_FRAME_DURATION_MS * 2,
+        },
+    };
+    av_stream_ = av_stream_init(&av_stream_config);
+    if (!av_stream_) {
+        ESP_LOGE(TAG, "Failed to initialize av stream");
+        return;
+    }
+    sip_handle_ = sip_service_start(av_stream_, uri, this);
+}
+
+void Application::VoipCall(const std::string& target_uri) {
+    if (sip_handle_) {
+        esp_rtc_call(sip_handle_, target_uri.c_str());
+    }
+}
+
+void Application::VoipAnswer() {
+    if (sip_handle_) {
+        esp_rtc_answer(sip_handle_);
+    }
+}
+
+void Application::VoipHangup() {
+    if (sip_handle_) {
+        esp_rtc_bye(sip_handle_);
+    }
 }
