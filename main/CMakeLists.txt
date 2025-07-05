@@ -245,7 +245,7 @@ endif()
 idf_component_register(SRCS ${SOURCES}
                     EMBED_FILES ${LANG_SOUNDS} ${COMMON_SOUNDS}
                     INCLUDE_DIRS ${INCLUDE_DIRS}
-                    PRIV_REQUIRES esp-wifi-connect efuse esp_app_format spi_flash app_update
+                    PRIV_REQUIRES esp-wifi-connect efuse esp_app_format spi_flash app_update "78__esp-opus-encoder"
                     WHOLE_ARCHIVE
                     )
 
