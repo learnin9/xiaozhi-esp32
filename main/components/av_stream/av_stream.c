@@ -1041,9 +1041,10 @@ av_stream_handle_t av_stream_init(av_stream_config_t *config)
 
     if (config->acodec_type != AV_ACODEC_NULL) {
         if (av_stream->config.hal.uac_en) {
-            av_stream_audio_init(&uac_frame_cb, av_stream, &av_stream->config.hal);
+            // av_stream_audio_init(&uac_frame_cb, av_stream, &av_stream->config.hal);
         } else {
-            av_stream->board_handle = av_stream_audio_init(NULL, NULL, &av_stream->config.hal);
+            // av_stream->board_handle = av_stream_audio_init(NULL, NULL, &av_stream->config.hal);
+            av_stream->board_handle = audio_board_get_handle();
         }
     }
 
